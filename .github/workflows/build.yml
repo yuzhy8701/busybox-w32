@@ -1,0 +1,36 @@
+name: Make
+
+on:
+  workflow_dispatch
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+          sudo apt update
+          sudo apt install -y gcc make gcc-mingw-w64 libncurses-dev perl
+
+    - name: Configure BusyBox
+      run: |
+          make mingw64_defconfig
+          # Cleanly enable long path support if it exists as 'not set'
+          if grep -q "CONFIG_FEATURE_LONG_PATHS" .config; then
+            sed -i 's/# CONFIG_FEATURE_LONG_PATHS is not set/CONFIG_FEATURE_LONG_PATHS=y/' .config
+          else
+            echo "CONFIG_FEATURE_LONG_PATHS=y" >> .config
+          fi
+          cat .config
+
+    - name: Build BusyBox
+      run: make -j$(nproc)
+
+    - name: Upload BusyBox Binary
+      uses: actions/upload-artifact@v4
+      with:
+        name: busybox-win64
+        path: busybox.exe
